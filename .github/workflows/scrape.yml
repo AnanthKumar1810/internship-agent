@@ -1,0 +1,39 @@
+name: Internship Alert Agent
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"   # every 4 hours
+  workflow_dispatch: {}      # allows manual "Run workflow" button too
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run agent
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python -m agent.main
+
+      - name: Commit updated state file
+        run: |
+          git config user.name "internship-agent-bot"
+          git config user.email "actions@github.com"
+          git add seen_listings.json
+          git diff --staged --quiet || git commit -m "Update seen listings [skip ci]"
+          git push
